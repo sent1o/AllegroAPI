@@ -2,13 +2,13 @@ import json
 import os
 import pandas as pd
 from datetime import datetime
-
-FILENAME = "core.json"
+from config import CORE_PATH, BASE_DIR
 
 
 def data_parser():
-    if os.path.exists(FILENAME):
-        with open(FILENAME, "r", encoding="utf-8") as f:
+    if os.path.exists(CORE_PATH):
+        print("Формуємо Excel-файл для Хорошопу...")
+        with open(CORE_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
 
             xlsx_prepare = []
@@ -76,7 +76,7 @@ def data_parser():
 
             for_record = pd.DataFrame(xlsx_prepare)
             current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-            export_filename = f"horoshop_{current_time}.xlsx"
+            export_filename = os.path.join(BASE_DIR, f"horoshop_{current_time}.xlsx")
 
             with pd.ExcelWriter(export_filename, engine="xlsxwriter") as writer:
                 for_record.to_excel(writer, index=False, sheet_name="Products")
@@ -87,7 +87,10 @@ def data_parser():
                 for col_num, value in enumerate(for_record.columns.values):
                     worksheet.write(0, col_num, value, bold_format)
                 worksheet.set_column(0, len(for_record.columns) - 1, 20)
-    return True
+        return True
+    else:
+        print("Файл CORE не знайдено")
+        return False
 
 
 def get_param_value(params, name_to_find):

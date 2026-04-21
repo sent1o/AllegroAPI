@@ -14,7 +14,6 @@ if __name__ == "__main__":
             else:
                 print("Дані отримано. Оновлюємо КОР-базу...")
                 core_parser(raw_data)
-                print("Формуємо Excel-файл для Хорошопу...")
                 data_parser()
                 print("✅ Весь цикл успішно завершено!")
         else:

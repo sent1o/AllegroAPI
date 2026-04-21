@@ -3,10 +3,8 @@ import os
 import time
 import json
 
-from config import CLIENT_ID, CLIENT_SECRET
+from config import CLIENT_ID, CLIENT_SECRET, TOKEN_PATH, RAW_DATA_FILE
 import base64
-
-TOKEN_FILE = "token.json"
 
 
 def get_tokens():
@@ -43,7 +41,7 @@ def get_tokens():
 
 
 def save_tokens(token_data):
-    with open(TOKEN_FILE, "w") as f:
+    with open(TOKEN_PATH, "w", encoding="utf-8") as f:
         json.dump(token_data, f)
 
 
@@ -78,8 +76,8 @@ def refresh_access_token(refresh_token):
 
 
 def token_out():
-    if os.path.exists(TOKEN_FILE):
-        with open(TOKEN_FILE, "r") as f:
+    if os.path.exists(TOKEN_PATH):
+        with open(TOKEN_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
             return data.get("access_token"), data.get("refresh_token")
     else:
@@ -126,6 +124,16 @@ def get_offers(access_token):
     return {"status": 200, "data": all_offers}
 
 
+def save_raw_api_response(data, filename=RAW_DATA_FILE):
+    """Зберігає отримані дані в JSON-файл для подальшого аналізу."""
+    try:
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+        print(f"✅ Сирі дані успішно збережені у файл: {filename}")
+    except Exception as e:
+        print(f"❌ Не вдалося зберегти сирі дані: {e}")
+
+
 def launch():
     access, refresh = token_out()
     if not access:
@@ -142,6 +150,7 @@ def launch():
         offers_data = get_offers(access)
 
     if offers_data.get("status") == 200:
+        save_raw_api_response(offers_data)
         return offers_data.get("data")
     else:
         print(f"Помилка: {offers_data.get('status')}")
