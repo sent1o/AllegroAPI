@@ -90,37 +90,53 @@ def get_offers(access_token):
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Accept": "application/vnd.allegro.public.v1+json",
-        "User-Agent": "AllegroTo-offers/1.0.0 (+https://your-info-link.com)",
+        "User-Agent": "AllegroTo-offers/1.0.0",
     }
     all_offers = []
     limit = 100
     offset = 0
     total_count = None
+
     while True:
         params = {"limit": limit, "offset": offset}
-        response = requests.get(url, headers=headers, params=params)
 
-        if response.status_code == 200:
-            data = response.json()
-            print("Зв'язок встановлено! Оффери отримані.")
-            if total_count is None:
-                total_count = data.get("count", 0)
-            offers = data.get("offers", [])
-            if not offers:
+        try:
+            response = requests.get(url, headers=headers, params=params, timeout=30)
+
+            if response.status_code == 200:
+                data = response.json()
+
+                if total_count is None:
+                    total_count = data.get("count", 0)
+                    print(f"📦 Всього товарів до завантаження: {total_count}")
+
+                offers = data.get("offers", [])
+                if not offers:
+                    break
+
+                all_offers.extend(offers)
+
+                save_raw_api_response({"offers": all_offers, "status": "partial"})
+
+                print(f"✅ Отримано пачку: {offset} - {offset + len(offers)}...")
+
+                offset += limit
+                if len(all_offers) >= total_count:
+                    break
+
+                time.sleep(0.5)
+
+            elif response.status_code == 401:
+                return {"status": 401, "data": all_offers}
+
+            else:
+                print(f"❌ Помилка API: {response.status_code}, {response.text}")
                 break
-            all_offers.extend(offers)
-            offset += limit
-            if len(all_offers) >= total_count:
-                break
 
-            time.sleep(0.5)
-
-        elif response.status_code == 401:
-            print("⚠️ Треба оновити Токен. 401.")
-            return {"status": 401}
-        else:
-            print(f"Помилка: {response.status_code}")
+        except Exception as e:
+            print(f"💥 Критична помилка мережі: {e}")
             break
+
     return {"status": 200, "data": all_offers}
 
 
