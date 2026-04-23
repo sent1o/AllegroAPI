@@ -1,6 +1,10 @@
 # README №2: Технічна документація для розробників (Dev Doc)
 
 Автоматизований скрипт на Python для вивантаження товарів з маркетплейсу Allegro та формування файлу імпорту для платформи Хорошоп (Horoshop).
+<img width="1108" height="621" alt="image" src="https://github.com/user-attachments/assets/6e5b666f-b513-4e48-8524-da1c1e63579e" />
+
+<img width="1743" height="805" alt="image" src="https://github.com/user-attachments/assets/d9d0160b-ef52-492a-8689-672b57e8d41a" />
+
 
 ## 🛠 Можливості
 - **OAuth2 Авторизація:** Отримання та оновлення токенів доступу через Allegro REST API.
