@@ -1,9 +1,14 @@
 from core_mapper import core_parser
 from auth import launch
 from horoshop_exporter import data_parser
+from config import RAW_DATA_FILE
 import traceback
+import os
 
 if __name__ == "__main__":
+    if os.path.exists(RAW_DATA_FILE):
+        os.remove(RAW_DATA_FILE)
+
     try:
         print("Старт системи: запускаємо зв'язок з Алегро...")
         raw_data = launch()
@@ -15,7 +20,6 @@ if __name__ == "__main__":
                 print("Дані отримано. Оновлюємо КОР-базу...")
                 core_parser(raw_data)
                 data_parser()
-                print("✅ Весь цикл успішно завершено!")
         else:
             print("❌ Помилка АПІ. Перевірте .env файл.")
 
@@ -24,4 +28,12 @@ if __name__ == "__main__":
         traceback.print_exc()
 
     finally:
+        if os.path.exists(RAW_DATA_FILE):
+            try:
+                os.remove(RAW_DATA_FILE)
+            except Exception as e:
+                print(f"Не вдалося видалити тимчасовий файл {RAW_DATA_FILE}")
+                print(f"Помилка: {e}")
+                print(f"Якщо можливо - видаліть файл вручну")
+
         input("\nНатисніть Enter для виходу... ")

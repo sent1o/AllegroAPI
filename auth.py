@@ -2,7 +2,6 @@ import requests
 import os
 import time
 import json
-
 from config import CLIENT_ID, CLIENT_SECRET, TOKEN_PATH, RAW_DATA_FILE
 import base64
 
@@ -85,58 +84,100 @@ def token_out():
         return None, None
 
 
+import time
+import requests
+
+
 def get_offers(access_token):
-    url = "https://api.allegro.pl/sale/offers"
+    url_list = "https://api.allegro.pl/sale/offers"
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Accept": "application/vnd.allegro.public.v1+json",
         "User-Agent": "AllegroTo-offers/1.0.0",
     }
+
     all_offers = []
     limit = 100
     offset = 0
     total_count = None
+    processed_count = 0
 
     while True:
         params = {"limit": limit, "offset": offset}
-
         try:
-            response = requests.get(url, headers=headers, params=params, timeout=30)
+            response = requests.get(
+                url_list, headers=headers, params=params, timeout=30
+            )
+
+            if response.status_code == 429:
+                print("⚠️ Забагато запитів! Чекаємо 30 секунд...")
+                time.sleep(30)
+                continue
 
             if response.status_code == 200:
                 data = response.json()
-
                 if total_count is None:
-                    total_count = data.get("count", 0)
-                    print(f"📦 Всього товарів до завантаження: {total_count}")
+                    total_count = data.get("totalCount", 0)
+                    print(f"📦 Всього товарів у кабінеті: {total_count}")
+                    print("Починаємо обробку... Це займе трохи часу!")
 
-                offers = data.get("offers", [])
-                if not offers:
+                batch_offers = data.get("offers", [])
+                if not batch_offers:
                     break
 
-                all_offers.extend(offers)
+                for i, short_offer in enumerate(batch_offers, 1):
+                    offer_id = short_offer.get("id")
+                    processed_count += 1
+
+                    full_url = f"https://api.allegro.pl/sale/product-offers/{offer_id}"
+
+                    try:
+                        detail_res = requests.get(full_url, headers=headers, timeout=20)
+
+                        if detail_res.status_code == 200:
+                            full_data = detail_res.json()
+                            all_offers.append(full_data)
+                        elif detail_res.status_code == 429:
+                            print("\n🔴 Ліміт вичерпано! Пауза 20 сек...")
+                            time.sleep(20)
+                            all_offers.append(short_offer)  # Щоб не загубити
+                        else:
+                            print(
+                                f"\n❌ Помилка ID {offer_id}: {detail_res.status_code}"
+                            )
+                            all_offers.append(short_offer)
+
+                        time.sleep(0.1)
+
+                    except Exception as e:
+                        print(f"\n💥 Помилка на товарі {offer_id}: {e}")
+                        all_offers.append(short_offer)
+
+                    if processed_count % 100 == 0 or processed_count == total_count:
+                        percent = (
+                            (processed_count / total_count) * 100 if total_count else 0
+                        )
+                        print(
+                            f"⏳ Оброблено: {processed_count}/{total_count} ({percent:.1f}%)"
+                        )
 
                 save_raw_api_response({"offers": all_offers, "status": "partial"})
 
-                print(f"✅ Отримано пачку: {offset} - {offset + len(offers)}...")
-
                 offset += limit
-                if len(all_offers) >= total_count:
-                    break
-
-                time.sleep(0.5)
+                time.sleep(1)
 
             elif response.status_code == 401:
+                print("\n⚠️ Токен недійсний!")
                 return {"status": 401, "data": all_offers}
-
             else:
-                print(f"❌ Помилка API: {response.status_code}, {response.text}")
+                print(f"\n❌ Помилка списку: {response.status_code}")
                 break
 
         except Exception as e:
-            print(f"💥 Критична помилка мережі: {e}")
+            print(f"\n!!!Критична помилка мережі: {e}")
             break
 
+    print("\n✅ Завантаження даних завершено!")
     return {"status": 200, "data": all_offers}
 
 
@@ -145,7 +186,6 @@ def save_raw_api_response(data, filename=RAW_DATA_FILE):
     try:
         with open(filename, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
-        print(f"✅ Сирі дані успішно збережені у файл: {filename}")
     except Exception as e:
         print(f"❌ Не вдалося зберегти сирі дані: {e}")
 
